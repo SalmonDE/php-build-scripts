@@ -1,28 +1,29 @@
 #!/bin/bash
-[ -z "$PHP_VERSION" ] && PHP_VERSION="7.2.6"
+[ -z "$PHP_VERSION" ] && PHP_VERSION="7.2.7"
 
 PHP_IS_BETA="no"
 
 ZLIB_VERSION="1.2.11"
-MBEDTLS_VERSION="2.8.0"
+MBEDTLS_VERSION="2.11.0"
 GMP_VERSION="6.1.2"
-CURL_VERSION="curl-7_59_0"
+CURL_VERSION="curl-7_60_0"
 READLINE_VERSION="6.3"
 NCURSES_VERSION="6.0"
 YAML_VERSION="0.1.7"
-LEVELDB_VERSION="8758c296910988f13d737a44696c01b5000f227c"
+LEVELDB_VERSION="e593bfda9347a6118b8f58bb50db29c2a88bc50b"
 LIBXML_VERSION="2.9.1"
 LIBPNG_VERSION="1.6.34"
+LIBJPEG_VERSION="8"
 OPENSSL_VERSION="1.1.0h"
 
 EXT_NCURSES_VERSION="1.0.2"
-EXT_PTHREADS_VERSION="d32079fb4a88e6e008104d36dbbf0c2dd7deb403"
+EXT_PTHREADS_VERSION="a3057347da7fde81c9ae82ac3669b9c08828c482"
 EXT_YAML_VERSION="2.0.2"
-EXT_LEVELDB_VERSION="8a51bec95c6bdcbfba61424a96c77fec8f265b6f"
+EXT_LEVELDB_VERSION="65971421d31b3d01dfa4205b4698c11b9736fdef"
 EXT_POCKETMINE_CHUNKUTILS_VERSION="master"
 EXT_XDEBUG_VERSION="2.6.0"
-EXT_IGBINARY_VERSION="4b61818d361cf2c51472956b4a6e23be363d681a"
-EXT_DS_VERSION="f3989cbfca634256e29f155d6fff77e0e50f5ab8"
+EXT_IGBINARY_VERSION="2.0.6"
+EXT_DS_VERSION="35a46a0fba1a0fe2bd4c61f6ea9891d8c4b5e94a"
 
 function write_out {
 	echo "[$1] $2"
@@ -632,11 +633,29 @@ if [ "$COMPILE_GD" == "yes" ]; then
 	make install >> "$DIR/install.log" 2>&1
 	cd ..
 	echo " done!"
+	#libjpeg
+	echo -n "[libjpeg] downloading $LIBJPEG_VERSION..."
+	download_file "http://ijg.org/files/jpegsrc.v$LIBJPEG_VERSION.tar.gz" | tar -zx >> "$DIR/install.log" 2>&1
+	mv jpeg-$LIBJPEG_VERSION libjpeg
+	echo -n " checking..."
+	cd libjpeg
+	LDFLAGS="$LDFLAGS -L${DIR}/bin/php7/lib" CPPFLAGS="$CPPFLAGS -I${DIR}/bin/php7/include" RANLIB=$RANLIB ./configure \
+	--prefix="$DIR/bin/php7" \
+	$EXTRA_FLAGS \
+	$CONFIGURE_FLAGS >> "$DIR/install.log" 2>&1
+	echo -n " compiling..."
+	make -j $THREADS >> "$DIR/install.log" 2>&1
+	echo -n " installing..."
+	make install >> "$DIR/install.log" 2>&1
+	cd ..
+	echo " done!"
 	HAS_GD="--with-gd"
 	HAS_LIBPNG="--with-png-dir=${DIR}/bin/php7"
+	HAS_LIBJPEG="--with-jpeg-dir=${DIR}/bin/php7"
 else
 	HAS_GD=""
 	HAS_LIBPNG=""
+	HAS_LIBJPEG=""
 fi
 
 #libxml2
@@ -707,7 +726,7 @@ fi
 
 #get_pecl_extension "ncurses" "$EXT_NCURSES_VERSION"
 
-get_github_extension "pthreads" "$EXT_PTHREADS_VERSION" "krakjoe" "pthreads" #"v" needed for release tags because github removes the "v"
+get_github_extension "pthreads" "$EXT_PTHREADS_VERSION" "pmmp" "pthreads" #"v" needed for release tags because github removes the "v"
 #get_pecl_extension "pthreads" "$EXT_PTHREADS_VERSION"
 
 get_github_extension "yaml" "$EXT_YAML_VERSION" "php" "pecl-file_formats-yaml"
@@ -811,6 +830,7 @@ RANLIB=$RANLIB CFLAGS="$CFLAGS $FLAGS_LTO" CXXFLAGS="$CXXFLAGS $FLAGS_LTO" LDFLA
 --with-yaml="$DIR/bin/php7" \
 --with-openssl="$DIR/bin/php7" \
 $HAS_LIBPNG \
+$HAS_LIBJPEG \
 $HAS_GD \
 $HAVE_NCURSES \
 $HAVE_READLINE \
