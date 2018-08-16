@@ -182,6 +182,7 @@ call configure^
  --with-pdo-mysql^
  --enable-bcmath^
  --enable-calendar^
+ --enable-com-dotnet^
  --enable-ctype^
  --enable-ds=shared^
  --enable-filter^
