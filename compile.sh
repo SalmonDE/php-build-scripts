@@ -4,7 +4,6 @@
 PHP_IS_BETA="no"
 
 ZLIB_VERSION="1.2.11"
-MBEDTLS_VERSION="2.12.0"
 GMP_VERSION="6.1.2"
 CURL_VERSION="curl-7_61_0"
 READLINE_VERSION="6.3"
@@ -100,6 +99,7 @@ COMPILE_FANCY="no"
 IS_CROSSCOMPILE="no"
 IS_WINDOWS="no"
 DO_OPTIMIZE="no"
+OPTIMIZE_TARGET=""
 DO_STATIC="no"
 DO_CLEANUP="yes"
 COMPILE_DEBUG="no"
@@ -149,20 +149,7 @@ while getopts "::t:oj:srdlxzff:ugn" OPTION; do
 		f)
 			echo "[opt] Enabling abusive optimizations..."
 			DO_OPTIMIZE="yes"
-			#FLAGS_LTO="-fvisibility=hidden -flto"
-			ffast_math="-fno-math-errno -funsafe-math-optimizations -fno-signed-zeros -fno-trapping-math -ffinite-math-only -fno-rounding-math -fno-signaling-nans" #workaround SQLite3 fail
-			CFLAGS="$CFLAGS -O2 -DSQLITE_HAVE_ISNAN $ffast_math -ftree-vectorize -fomit-frame-pointer -funswitch-loops -fivopts"
-			if [ "$COMPILE_TARGET" != "mac" ] && [ "$COMPILE_TARGET" != "mac32" ] && [ "$COMPILE_TARGET" != "mac64" ]; then
-				CFLAGS="$CFLAGS -funsafe-loop-optimizations -fpredictive-commoning -ftracer -ftree-loop-im -frename-registers -fcx-limited-range"
-			fi
-
-			if [ "$OPTARG" == "arm" ]; then
-				CFLAGS="$CFLAGS -mfpu=vfp"
-			elif [ "$OPTARG" == "x86_64" ]; then
-				CFLAGS="$CFLAGS -mmmx -msse -msse2 -msse3 -mfpmath=sse -free -msahf -ftree-parallelize-loops=4"
-			elif [ "$OPTARG" == "x86" ]; then
-				CFLAGS="$CFLAGS -mmmx -msse -msse2 -mfpmath=sse -m128bit-long-double -malign-double -ftree-parallelize-loops=4"
-			fi
+			OPTIMIZE_TARGET="$OPTARG"
 			;;
 		u)
 			echo "[opt] Will compile with PocketMine-ChunkUtils C extension for Anvil"
@@ -228,36 +215,58 @@ if [ "$IS_CROSSCOMPILE" == "yes" ]; then
 		echo "Please supply a proper platform [mac win win64 android-aarch64] to cross-compile"
 		exit 1
 	fi
-elif [[ "$COMPILE_TARGET" == "linux" ]] || [[ "$COMPILE_TARGET" == "linux64" ]]; then
-	[ -z "$march" ] && march=x86-64;
-	[ -z "$mtune" ] && mtune=nocona;
-	CFLAGS="$CFLAGS -m64"
-	GMP_ABI="64"
-	OPENSSL_TARGET="linux-x86_64"
-	echo "[INFO] Compiling for Linux x86_64"
-elif [[ "$COMPILE_TARGET" == "mac" ]] || [[ "$COMPILE_TARGET" == "mac64" ]]; then
-	[ -z "$march" ] && march=core2;
-	[ -z "$mtune" ] && mtune=generic;
-	CFLAGS="$CFLAGS -m64 -arch x86_64 -fomit-frame-pointer -mmacosx-version-min=10.7";
-	if [ "$DO_STATIC" == "no" ]; then
-		LDFLAGS="$LDFLAGS -Wl,-rpath,@loader_path/../lib";
-		export DYLD_LIBRARY_PATH="@loader_path/../lib"
+else
+	if [[ "$COMPILE_TARGET" == "" ]] && [[ "$(uname -s)" == "Darwin" ]]; then
+		COMPILE_TARGET="mac"
 	fi
-	CFLAGS="$CFLAGS -Qunused-arguments -Wno-error=unused-command-line-argument-hard-error-in-future"
-	ARCHFLAGS="-Wno-error=unused-command-line-argument-hard-error-in-future"
-	GMP_ABI="64"
-	CXXFLAGS="$CXXFLAGS -stdlib=libc++"
-	OPENSSL_TARGET="darwin64-x86_64-cc"
-	echo "[INFO] Compiling for Intel MacOS x86_64"
-#TODO: add aarch64 platforms (ios, android, rpi)
-elif [ -z "$CFLAGS" ]; then
-	if [ `getconf LONG_BIT` == "64" ]; then
-		echo "[INFO] Compiling for current machine using 64-bit"
-		CFLAGS="-m64 $CFLAGS"
+	if [[ "$COMPILE_TARGET" == "linux" ]] || [[ "$COMPILE_TARGET" == "linux64" ]]; then
+		[ -z "$march" ] && march=x86-64;
+		[ -z "$mtune" ] && mtune=nocona;
+		CFLAGS="$CFLAGS -m64"
 		GMP_ABI="64"
-	else
-		echo "[ERROR] PocketMine-MP is no longer supported on 32-bit systems"
-		exit 1
+		OPENSSL_TARGET="linux-x86_64"
+		echo "[INFO] Compiling for Linux x86_64"
+	elif [[ "$COMPILE_TARGET" == "mac" ]] || [[ "$COMPILE_TARGET" == "mac64" ]]; then
+		[ -z "$march" ] && march=core2;
+		[ -z "$mtune" ] && mtune=generic;
+		CFLAGS="$CFLAGS -m64 -arch x86_64 -fomit-frame-pointer -mmacosx-version-min=10.7";
+		if [ "$DO_STATIC" == "no" ]; then
+			LDFLAGS="$LDFLAGS -Wl,-rpath,@loader_path/../lib";
+			export DYLD_LIBRARY_PATH="@loader_path/../lib"
+		fi
+		CFLAGS="$CFLAGS -Qunused-arguments -Wno-error=unused-command-line-argument-hard-error-in-future"
+		ARCHFLAGS="-Wno-error=unused-command-line-argument-hard-error-in-future"
+		GMP_ABI="64"
+		CXXFLAGS="$CXXFLAGS -stdlib=libc++"
+		OPENSSL_TARGET="darwin64-x86_64-cc"
+		echo "[INFO] Compiling for Intel MacOS x86_64"
+	#TODO: add aarch64 platforms (ios, android, rpi)
+	elif [ -z "$CFLAGS" ]; then
+		if [ `getconf LONG_BIT` == "64" ]; then
+			echo "[INFO] Compiling for current machine using 64-bit"
+			CFLAGS="-m64 $CFLAGS"
+			GMP_ABI="64"
+		else
+			echo "[ERROR] PocketMine-MP is no longer supported on 32-bit systems"
+			exit 1
+		fi
+	fi
+fi
+
+if [ "$DO_OPTIMIZE" != "no" ]; then
+	#FLAGS_LTO="-fvisibility=hidden -flto"
+	ffast_math="-fno-math-errno -funsafe-math-optimizations -fno-signed-zeros -fno-trapping-math -ffinite-math-only -fno-rounding-math -fno-signaling-nans" #workaround SQLite3 fail
+	CFLAGS="$CFLAGS -O2 -DSQLITE_HAVE_ISNAN $ffast_math -ftree-vectorize -fomit-frame-pointer -funswitch-loops -fivopts"
+	if [ "$COMPILE_TARGET" != "mac" ] && [ "$COMPILE_TARGET" != "mac32" ] && [ "$COMPILE_TARGET" != "mac64" ]; then
+		CFLAGS="$CFLAGS -funsafe-loop-optimizations -fpredictive-commoning -ftracer -ftree-loop-im -frename-registers -fcx-limited-range"
+	fi
+
+	if [ "$OPTIMIZE_TARGET" == "arm" ]; then
+		CFLAGS="$CFLAGS -mfpu=vfp"
+	elif [ "$OPTIMIZE_TARGET" == "x86_64" ]; then
+		CFLAGS="$CFLAGS -mmmx -msse -msse2 -msse3 -mfpmath=sse -free -msahf -ftree-parallelize-loops=4"
+	elif [ "$OPTIMIZE_TARGET" == "x86" ]; then
+		CFLAGS="$CFLAGS -mmmx -msse -msse2 -mfpmath=sse -m128bit-long-double -malign-double -ftree-parallelize-loops=4"
 	fi
 fi
 
@@ -453,30 +462,6 @@ cd ..
 echo " done!"
 
 
-#if [ "$DO_STATIC" == "yes" ]; then
-#	EXTRA_FLAGS=""
-#else
-#	EXTRA_FLAGS="shared no-static"
-#fi
-
-#mbed TLS
-#TODO: remove and use openssl instead?
-
-echo -n "[mbed TLS] downloading $MBEDTLS_VERSION..."
-download_file "https://tls.mbed.org/download/mbedtls-${MBEDTLS_VERSION}-gpl.tgz" | tar -zx >> "$DIR/install.log" 2>&1
-mv mbedtls-${MBEDTLS_VERSION} mbedtls
-echo -n " checking..."
-cd mbedtls
-sed -i=".backup" 's,DESTDIR=/usr/local,,g' Makefile
-echo -n " compiling..."
-DESTDIR="$DIR/bin/php7" RANLIB=$RANLIB make -j $THREADS lib >> "$DIR/install.log" 2>&1
-echo -n " installing..."
-DESTDIR="$DIR/bin/php7" make install >> "$DIR/install.log" 2>&1
-cd ..
-echo " done!"
-
-
-
 #OpenSSL
 OPENSSL_CMD="./config"
 if [ "$OPENSSL_TARGET" != "" ]; then
@@ -541,8 +526,7 @@ RANLIB=$RANLIB ./configure --disable-dependency-tracking \
 --disable-ldaps \
 --without-libidn \
 --with-zlib="$DIR/bin/php7" \
---without-ssl \
---with-mbedtls="$DIR/bin/php7" \
+--with-ssl="$DIR/bin/php7" \
 --enable-threaded-resolver \
 --prefix="$DIR/bin/php7" \
 $EXTRA_FLAGS \
@@ -849,6 +833,7 @@ $HAS_POCKETMINE_CHUNKUTILS \
 --disable-xmlreader \
 --disable-xmlwriter \
 --disable-cgi \
+--disable-phpdbg \
 --disable-session \
 --without-pear \
 --without-iconv \
