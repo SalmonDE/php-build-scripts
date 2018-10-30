@@ -3,7 +3,7 @@
 REM For future users: This file MUST have CRLF line endings. If it doesn't, lots of inexplicable undesirable strange behaviour will result.
 REM Also: Don't modify this version with sed, or it will screw up your line endings.
 set PHP_MAJOR_VER=7.2
-set PHP_VER=%PHP_MAJOR_VER%.9
+set PHP_VER=%PHP_MAJOR_VER%.11
 set PHP_IS_BETA="no"
 set PHP_SDK_VER=2.1.1
 set PATH=C:\Program Files\7-Zip;C:\Program Files (x86)\GnuWin32\bin;%PATH%
@@ -13,10 +13,10 @@ set CMAKE_TARGET=Visual Studio 15 2017 Win64
 
 REM need this version to be able to compile as a shared library
 set LIBYAML_VER=660242d6a418f0348c61057ed3052450527b3abf
-set PTHREAD_W32_VER=2-9-1
-set LEVELDB_MCPE_VER=e593bfda9347a6118b8f58bb50db29c2a88bc50b
+set PTHREAD_W32_VER=3.0.0
+set LEVELDB_MCPE_VER=f1ff6a673f5b0b3703e4fca56cd866a2fb31d6c7
 
-set PHP_PTHREADS_VER=a3057347da7fde81c9ae82ac3669b9c08828c482
+set PHP_PTHREADS_VER=5eb80c0c691aa81e0d235bdd37f6f30b633c433e
 set PHP_YAML_VER=2.0.2
 set PHP_POCKETMINE_CHUNKUTILS_VER=master
 set PHP_IGBINARY_VER=2.0.6
@@ -96,30 +96,21 @@ cd "%DEPS_DIR%"
 call :pm-echo "Downloading pthread-w32 version %PTHREAD_W32_VER%..."
 mkdir pthread-w32
 cd pthread-w32
-call :get-zip http://www.mirrorservice.org/sites/sources.redhat.com/pub/pthreads-win32/pthreads-w32-%PTHREAD_W32_VER%-release.zip || exit 1
-cd pthreads.2
-
-REM Hack for HAVE_STRUCT_TIMESPEC for newer VS versions - it doesn't compile in VS2017 without it
-REM really this should do some nice replacement, but text replace in batchfile is a pain
-REM hack start
-chcp 65001 & echo #ifndef HAVE_STRUCT_TIMESPEC^
-
-#define HAVE_STRUCT_TIMESPEC 1^
-
-#endif^
- >>config.h
-REM hack end
+call :get-zip https://sourceforge.net/projects/pthreads4w/files/pthreads4w-code-v%PTHREAD_W32_VER%.zip/download || exit 1
+move pthreads4w-code-* pthreads4w-code >>"%log_file%" 2>&1
+cd pthreads4w-code
 
 call :pm-echo "Compiling..."
-nmake VC-inlined >>"%log_file%" 2>&1 || exit 1
+nmake VC >>"%log_file%" 2>&1 || exit 1
 
 call :pm-echo "Copying files..."
 copy pthread.h "%DEPS_DIR%\include\pthread.h" >>"%log_file%" 2>&1
 copy sched.h "%DEPS_DIR%\include\sched.h" >>"%log_file%" 2>&1
 copy semaphore.h "%DEPS_DIR%\include\semaphore.h" >>"%log_file%" 2>&1
-copy pthreadVC2.lib "%DEPS_DIR%\lib\pthreadVC2.lib" >>"%log_file%" 2>&1
-copy pthreadVC2.dll "%DEPS_DIR%\bin\pthreadVC2.dll" >>"%log_file%" 2>&1
-copy pthreadVC2.pdb "%DEPS_DIR%\bin\pthreadVC2.pdb" >>"%log_file%" 2>&1
+copy _ptw32.h "%DEPS_DIR%\include\_ptw32.h" >>"%log_file%" 2>&1
+copy pthreadVC3.lib "%DEPS_DIR%\lib\pthreadVC3.lib" >>"%log_file%" 2>&1
+copy pthreadVC3.dll "%DEPS_DIR%\bin\pthreadVC3.dll" >>"%log_file%" 2>&1
+copy pthreadVC3.pdb "%DEPS_DIR%\bin\pthreadVC3.pdb" >>"%log_file%" 2>&1
 
 cd "%DEPS_DIR%"
 
@@ -128,12 +119,8 @@ call :get-zip https://github.com/pmmp/leveldb-mcpe/archive/%LEVELDB_MCPE_VER%.zi
 move leveldb-mcpe-%LEVELDB_MCPE_VER% leveldb >>"%log_file%" 2>&1
 cd leveldb
 
-set LEVELDB_ZLIB_LIB_DIR=%DEPS_DIR%\lib
-set LEVELDB_ZLIB_LIB_NAME=zlib_a.lib
-set LEVELDB_ZLIB_INCLUDE_DIR=%DEPS_DIR%\include
-
 call :pm-echo "Compiling..."
-msbuild leveldb.sln /p:Configuration=Release /m >>"%log_file%" 2>&1 || exit 1
+msbuild leveldb.sln /p:Configuration=Release /p:ZlibIncludePath="%DEPS_DIR%\include" /p:ZlibLibPath="%DEPS_DIR%\lib\zlib_a.lib" /m >>"%log_file%" 2>&1 || exit 1
 call :pm-echo "Copying files..."
 mkdir "%DEPS_DIR%\include\leveldb" >>"%log_file%" 2>&1 || exit 1
 xcopy include\leveldb %DEPS_DIR%\include\leveldb >>"%log_file%" 2>&1 || exit 1
@@ -157,10 +144,10 @@ call :get-extension-zip-from-github "ds"                    "%PHP_DS_VER%"      
 call :get-extension-zip-from-github "leveldb"               "%PHP_LEVELDB_VER%"               "reeze"    "php-leveldb"             || exit 1
 
 call :pm-echo " - crypto: downloading %PHP_CRYPTO_VER%..."
-git clone https://github.com/pmmp/php-crypto.git crypto
+git clone https://github.com/pmmp/php-crypto.git crypto >>"%log_file%" 2>&1 || exit 1
 cd crypto
-git checkout %PHP_CRYPTO_VER%
-git submodule update --init --recursive
+git checkout %PHP_CRYPTO_VER% >>"%log_file%" 2>&1 || exit 1
+git submodule update --init --recursive >>"%log_file%" 2>&1 || exit 1
 cd ..
 
 cd ..\..
@@ -223,12 +210,17 @@ nmake >>"%log_file%" 2>&1 || call :pm-fatal-error "Error compiling PHP"
 call :pm-echo "Assembling artifacts..."
 nmake snap >>"%log_file%" 2>&1 || call :pm-fatal-error "Error assembling artifacts"
 
-cd "%outpath%"
-
-call :pm-echo "Copying artifacts..."
-mkdir bin
+call :pm-echo "Removing unneeded dependency DLLs..."
 REM remove ICU DLLs copied unnecessarily by nmake snap - this needs to be removed if we ever have ext/intl as a dependency
 del /q C:\pocketmine-php-sdk\php-src\%ARCH%\Release_TS\php-%PHP_VER%\icu*.dll
+REM remove enchant dependencies which are unnecessarily copied - this needs to be removed if we ever have ext/enchant as a dependency
+del /q C:\pocketmine-php-sdk\php-src\%ARCH%\Release_TS\php-%PHP_VER%\glib-*.dll
+del /q C:\pocketmine-php-sdk\php-src\%ARCH%\Release_TS\php-%PHP_VER%\gmodule-*.dll
+rmdir /s /q C:\pocketmine-php-sdk\php-src\%ARCH%\Release_TS\php-%PHP_VER%\lib\enchant\
+
+call :pm-echo "Copying artifacts..."
+cd "%outpath%"
+mkdir bin
 move C:\pocketmine-php-sdk\php-src\%ARCH%\Release_TS\php-%PHP_VER% bin\php
 cd bin\php
 
