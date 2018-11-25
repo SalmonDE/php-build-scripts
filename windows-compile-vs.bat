@@ -3,7 +3,7 @@
 REM For future users: This file MUST have CRLF line endings. If it doesn't, lots of inexplicable undesirable strange behaviour will result.
 REM Also: Don't modify this version with sed, or it will screw up your line endings.
 set PHP_MAJOR_VER=7.2
-set PHP_VER=%PHP_MAJOR_VER%.11
+set PHP_VER=%PHP_MAJOR_VER%.12
 set PHP_IS_BETA="no"
 set PHP_SDK_VER=2.1.1
 set PATH=C:\Program Files\7-Zip;C:\Program Files (x86)\GnuWin32\bin;%PATH%
@@ -140,7 +140,7 @@ call :get-extension-zip-from-github "pthreads"              "%PHP_PTHREADS_VER%"
 call :get-extension-zip-from-github "yaml"                  "%PHP_YAML_VER%"                  "php"      "pecl-file_formats-yaml"  || exit 1
 call :get-extension-zip-from-github "pocketmine_chunkutils" "%PHP_POCKETMINE_CHUNKUTILS_VER%" "dktapps"  "PocketMine-C-ChunkUtils" || exit 1
 call :get-extension-zip-from-github "igbinary"              "%PHP_IGBINARY_VER%"              "igbinary" "igbinary"                || exit 1
-call :get-extension-zip-from-github "ds"                    "%PHP_DS_VER%"                    "php-ds"   "extension"               || exit 1
+call :get-extension-zip-from-github "ds"                    "%PHP_DS_VER%"                    "php-ds"   "ext-ds"                  || exit 1
 call :get-extension-zip-from-github "leveldb"               "%PHP_LEVELDB_VER%"               "reeze"    "php-leveldb"             || exit 1
 
 call :pm-echo " - crypto: downloading %PHP_CRYPTO_VER%..."
@@ -252,32 +252,6 @@ cd ..\..
 
 call :pm-echo "Checking PHP build works..."
 bin\php\php.exe --version >>"%log_file%" 2>&1 || call :pm-fatal-error "PHP build isn't working"
-
-
-
-call :pm-echo "Getting Composer..."
-
-set expect_signature=INVALID
-for /f %%i in ('wget --no-check-certificate -q -O - https://composer.github.io/installer.sig') do set expect_signature=%%i
-
-wget --no-check-certificate  -q -O composer-setup.php https://getcomposer.org/installer
-set actual_signature=INVALID2
-for /f %%i in ('bin\php\php.exe -r "echo hash_file(\"SHA384\", \"composer-setup.php\");"') do set actual_signature=%%i
-
-call :pm-echo "Checking Composer installer signature..."
-if "%expect_signature%" == "%actual_signature%" (
-	call :pm-echo "Installing composer to 'bin'..."
-	call bin\php\php.exe composer-setup.php --install-dir=bin >>"%log_file%" 2>&1 || call :pm-fatal-error "Composer installer failed"
-	rm composer-setup.php
-
-	call :pm-echo "Creating bin\composer.bat..."
-	echo @echo off >bin\composer.bat
-	echo "%%~dp0php\php.exe" "%%~dp0composer.phar" %%* >>bin\composer.bat
-) else (
-	call :pm-echo-error "Bad signature on Composer installer, skipping"
-)
-
-
 
 call :pm-echo "Packaging build..."
 set package_filename=php-%PHP_VER%-%VC_VER%-%ARCH%.zip
