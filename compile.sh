@@ -1,29 +1,30 @@
 #!/bin/bash
-[ -z "$PHP_VERSION" ] && PHP_VERSION="7.2.13"
+[ -z "$PHP_VERSION" ] && PHP_VERSION="7.2.14"
 
 PHP_IS_BETA="no"
 
 ZLIB_VERSION="1.2.11"
 GMP_VERSION="6.1.2"
-CURL_VERSION="curl-7_62_0"
+CURL_VERSION="curl-7_63_0"
 READLINE_VERSION="6.3"
 NCURSES_VERSION="6.0"
 YAML_VERSION="0.2.1"
-LEVELDB_VERSION="6cca62044fcad4667df74f470111d07f5f122841"
+LEVELDB_VERSION="f1463cb0b2486b0caf7d42ca3c7684545e875f04"
 LIBXML_VERSION="2.9.1"
 LIBPNG_VERSION="1.6.36"
 LIBJPEG_VERSION="9c"
 OPENSSL_VERSION="1.1.1a"
 
 EXT_NCURSES_VERSION="1.0.2"
-EXT_PTHREADS_VERSION="5eb80c0c691aa81e0d235bdd37f6f30b633c433e"
+EXT_PTHREADS_VERSION="9d1b2a7749cfe7e881630847ea214b7e4a3b4592"
 EXT_YAML_VERSION="2.0.4"
 EXT_LEVELDB_VERSION="9bcae79f71b81a5c3ea6f67e45ae9ae9fb2775a5"
 EXT_POCKETMINE_CHUNKUTILS_VERSION="master"
 EXT_XDEBUG_VERSION="2.6.1"
 EXT_IGBINARY_VERSION="2.0.8"
-EXT_DS_VERSION="4257ed3f75d85a729cf711c94ff06f67fc4e3af2"
+EXT_DS_VERSION="4bb4be24ce9835ca81be2e48f0104683e41bce12"
 EXT_CRYPTO_VERSION="5f26ac91b0ba96742cc6284cd00f8db69c3788b2"
+EXT_RECURSIONGUARD_VERSION="39514c540d1b2ff3121e50ae5c630e91f36a3950"
 
 function write_out {
 	echo "[$1] $2"
@@ -713,6 +714,8 @@ get_github_extension "igbinary" "$EXT_IGBINARY_VERSION" "igbinary" "igbinary"
 
 get_github_extension "ds" "$EXT_DS_VERSION" "php-ds" "ext-ds"
 
+get_github_extension "recursionguard" "$EXT_RECURSIONGUARD_VERSION" "pmmp" "ext-recursionguard"
+
 echo -n "  crypto: downloading $EXT_CRYPTO_VERSION..."
 git clone https://github.com/bukka/php-crypto.git "$DIR/install_data/php/ext/crypto" >> "$DIR/install.log" 2>&1
 cd "$DIR/install_data/php/ext/crypto"
@@ -858,6 +861,7 @@ $HAVE_MYSQLI \
 --enable-igbinary \
 --enable-ds \
 --with-crypto \
+--enable-recursionguard=shared \
 $CONFIGURE_FLAGS >> "$DIR/install.log" 2>&1
 echo -n " compiling..."
 if [ "$COMPILE_FOR_ANDROID" == "yes" ]; then
@@ -914,6 +918,7 @@ fi
 echo "error_reporting=-1" >> "$DIR/bin/php7/bin/php.ini"
 echo "display_errors=1" >> "$DIR/bin/php7/bin/php.ini"
 echo "display_startup_errors=1" >> "$DIR/bin/php7/bin/php.ini"
+echo ";extension=recursionguard.so" >> "$DIR/bin/php7/bin/php.ini"
 
 if [ "$IS_CROSSCOMPILE" != "yes" ] && [ "$DO_STATIC" == "no" ]; then
 	echo ";zend_extension=opcache.so" >> "$DIR/bin/php7/bin/php.ini"

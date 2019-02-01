@@ -3,7 +3,7 @@
 REM For future users: This file MUST have CRLF line endings. If it doesn't, lots of inexplicable undesirable strange behaviour will result.
 REM Also: Don't modify this version with sed, or it will screw up your line endings.
 set PHP_MAJOR_VER=7.2
-set PHP_VER=%PHP_MAJOR_VER%.13
+set PHP_VER=%PHP_MAJOR_VER%.14
 set PHP_IS_BETA="no"
 set PHP_SDK_VER=2.1.9
 set PATH=C:\Program Files\7-Zip;C:\Program Files (x86)\GnuWin32\bin;%PATH%
@@ -13,16 +13,17 @@ set CMAKE_TARGET=Visual Studio 15 2017 Win64
 
 set LIBYAML_VER=0.2.1
 set PTHREAD_W32_VER=3.0.0
-set LEVELDB_MCPE_VER=6cca62044fcad4667df74f470111d07f5f122841
+set LEVELDB_MCPE_VER=f1463cb0b2486b0caf7d42ca3c7684545e875f04
 
-set PHP_PTHREADS_VER=5eb80c0c691aa81e0d235bdd37f6f30b633c433e
+set PHP_PTHREADS_VER=9d1b2a7749cfe7e881630847ea214b7e4a3b4592
 set PHP_YAML_VER=2.0.4
 set PHP_POCKETMINE_CHUNKUTILS_VER=master
 set PHP_IGBINARY_VER=2.0.8
 REM this is 1.2.7 but tags with a "v" prefix are a pain in the ass
-set PHP_DS_VER=4257ed3f75d85a729cf711c94ff06f67fc4e3af2
+set PHP_DS_VER=4bb4be24ce9835ca81be2e48f0104683e41bce12
 set PHP_LEVELDB_VER=9bcae79f71b81a5c3ea6f67e45ae9ae9fb2775a5
 set PHP_CRYPTO_VER=5f26ac91b0ba96742cc6284cd00f8db69c3788b2
+set PHP_RECURSIONGUARD_VER=39514c540d1b2ff3121e50ae5c630e91f36a3950
 
 set script_path=%~dp0
 set log_file=%script_path%compile.log
@@ -141,6 +142,7 @@ call :get-extension-zip-from-github "pocketmine_chunkutils" "%PHP_POCKETMINE_CHU
 call :get-extension-zip-from-github "igbinary"              "%PHP_IGBINARY_VER%"              "igbinary" "igbinary"                || exit 1
 call :get-extension-zip-from-github "ds"                    "%PHP_DS_VER%"                    "php-ds"   "ext-ds"                  || exit 1
 call :get-extension-zip-from-github "leveldb"               "%PHP_LEVELDB_VER%"               "reeze"    "php-leveldb"             || exit 1
+call :get-extension-zip-from-github "recursionguard"        "%PHP_RECURSIONGUARD_VER%"        "pmmp"     "ext-recursionguard"      || exit 1
 
 call :pm-echo " - crypto: downloading %PHP_CRYPTO_VER%..."
 git clone https://github.com/bukka/php-crypto.git crypto >>"%log_file%" 2>&1 || exit 1
@@ -179,6 +181,7 @@ call configure^
  --disable-opcache^
  --enable-phar^
  --enable-pocketmine-chunkutils=shared^
+ --enable-recursionguard=shared^
  --enable-sockets^
  --enable-tokenizer^
  --enable-zip^
@@ -241,13 +244,18 @@ call :pm-echo "Generating php.ini..."
 (echo extension=php_crypto.dll)>>"%php_ini%"
 (echo igbinary.compact_strings=0)>>"%php_ini%"
 (echo ;zend_extension=php_opcache.dll)>>"%php_ini%"
-echo ;The following extensions are included as shared extensions (DLLs) but disabled by default as they are optional. Uncomment the ones you want to enable.>>"%php_ini%"
-(echo ;extension=php_gd2.dll)>>"%php_ini%"
-(echo ;extension=php_mysqli.dll)>>"%php_ini%"
-(echo ;extension=php_sqlite3.dll)>>"%php_ini%"
+(echo ;Optional extensions, supplied for plugin use)>>"%php_ini%"
+(echo extension=php_gd2.dll)>>"%php_ini%"
+(echo extension=php_mysqli.dll)>>"%php_ini%"
+(echo extension=php_sqlite3.dll)>>"%php_ini%"
+(echo ;Optional extensions, supplied for debugging)>>"%php_ini%"
+(echo ;extension=php_recursionguard.dll)>>"%php_ini%"
 REM TODO: more entries
 
 cd ..\..
+
+call :pm-echo "Downloading Microsoft Visual C++ Redistributable 2017"
+wget https://aka.ms/vs/15/release/vc_redist.x64.exe --no-check-certificate -q -O vc_redist.x64.exe || exit 1
 
 call :pm-echo "Checking PHP build works..."
 bin\php\php.exe --version >>"%log_file%" 2>&1 || call :pm-fatal-error "PHP build isn't working"
@@ -255,7 +263,7 @@ bin\php\php.exe --version >>"%log_file%" 2>&1 || call :pm-fatal-error "PHP build
 call :pm-echo "Packaging build..."
 set package_filename=php-%PHP_VER%-%VC_VER%-%ARCH%.zip
 if exist %package_filename% rm %package_filename%
-7z a -bd %package_filename% bin >nul || call :pm-fatal-error "Failed to package the build"
+7z a -bd %package_filename% bin vc_redist.x64.exe >nul || call :pm-fatal-error "Failed to package the build"
 
 call :pm-echo "Created build package %package_filename%"
 call :pm-echo "Moving debugging symbols to output directory..."
