@@ -1,5 +1,5 @@
 #!/bin/bash
-[ -z "$PHP_VERSION" ] && PHP_VERSION="7.2.15"
+[ -z "$PHP_VERSION" ] && PHP_VERSION="7.2.16"
 
 PHP_IS_BETA="no"
 
@@ -20,11 +20,11 @@ EXT_PTHREADS_VERSION="17c9966bac59211da0705166fc0ecb5ecbc96a0d"
 EXT_YAML_VERSION="2.0.4"
 EXT_LEVELDB_VERSION="9bcae79f71b81a5c3ea6f67e45ae9ae9fb2775a5"
 EXT_POCKETMINE_CHUNKUTILS_VERSION="master"
-EXT_XDEBUG_VERSION="2.6.1"
+EXT_XDEBUG_VERSION="2.7.0"
 EXT_IGBINARY_VERSION="2.0.8"
 EXT_DS_VERSION="4bb4be24ce9835ca81be2e48f0104683e41bce12"
 EXT_CRYPTO_VERSION="5f26ac91b0ba96742cc6284cd00f8db69c3788b2"
-EXT_RECURSIONGUARD_VERSION="39514c540d1b2ff3121e50ae5c630e91f36a3950"
+EXT_RECURSIONGUARD_VERSION="d6ed5da49178762ed81dc0184cd34ff4d3254720"
 
 function write_out {
 	echo "[$1] $2"
@@ -861,7 +861,7 @@ $HAVE_MYSQLI \
 --enable-igbinary \
 --enable-ds \
 --with-crypto \
---enable-recursionguard=shared \
+--enable-recursionguard \
 $CONFIGURE_FLAGS >> "$DIR/install.log" 2>&1
 echo -n " compiling..."
 if [ "$COMPILE_FOR_ANDROID" == "yes" ]; then
@@ -918,7 +918,7 @@ fi
 echo "error_reporting=-1" >> "$DIR/bin/php7/bin/php.ini"
 echo "display_errors=1" >> "$DIR/bin/php7/bin/php.ini"
 echo "display_startup_errors=1" >> "$DIR/bin/php7/bin/php.ini"
-echo ";extension=recursionguard.so" >> "$DIR/bin/php7/bin/php.ini"
+echo "recursionguard.enabled=0 ;disabled due to minor performance impact, only enable this if you need it for debugging" >> "$DIR/bin/php7/bin/php.ini"
 
 if [ "$IS_CROSSCOMPILE" != "yes" ] && [ "$DO_STATIC" == "no" ]; then
 	echo ";zend_extension=opcache.so" >> "$DIR/bin/php7/bin/php.ini"
