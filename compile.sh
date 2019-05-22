@@ -840,11 +840,10 @@ $HAS_DEBUG \
 --disable-cgi \
 --disable-phpdbg \
 --disable-session \
---disable-pdo \
 --without-pear \
 --without-iconv \
---without-pdo-sqlite \
 --with-pic \
+--with-pdo-mysql \
 --enable-phar \
 --enable-ctype \
 --enable-sockets \

@@ -174,6 +174,8 @@ call configure^
  --disable-cgi^
  --enable-cli^
  --enable-zts^
+ --enable-pdo^
+ --with-pdo-mysql^
  --enable-bcmath^
  --enable-calendar^
  --enable-chunkutils2=shared^
